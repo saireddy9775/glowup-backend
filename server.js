@@ -24,6 +24,9 @@ const salons = [
   { id: 2, name: "The Style Lounge", location: "Indiranagar, Bengaluru",  rating: 4.5, reviews: 189, image: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&q=80" },
   { id: 3, name: "Bliss Salon",      location: "HSR Layout, Bengaluru",   rating: 4.6, reviews: 247, image: "https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=600&q=80" },
 ];
+let nextSalonId = 4;
+
+const salonOwners = [];
 
 const services = [
   { id: 100, salonId: 1, name: "Test Payment ₹1", duration: 5,  price: 1    },
@@ -116,8 +119,43 @@ app.post("/razorpay/verify-payment", (req, res) => {
 });
 
 // ── Salons ────────────────────────────────────────────────
-app.get("/salons", (req, res) => {
+app.get("/salons", (_req, res) => {
   res.json({ success: true, data: salons });
+});
+
+app.post("/salons/register", (req, res) => {
+  const { salonName, ownerName, email, phone, password, address, city, categories } = req.body;
+  if (!salonName || !email || !password)
+    return res.status(400).json({ success: false, message: "Salon name, email and password are required" });
+  if (salonOwners.find((o) => o.email === email))
+    return res.status(400).json({ success: false, message: "Email already registered" });
+
+  const location = [address, city].filter(Boolean).join(", ") || "India";
+  const defaultImages = [
+    "https://images.unsplash.com/photo-1560066984-138daaa0ce98?w=600&q=80",
+    "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&q=80",
+    "https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=600&q=80",
+    "https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=600&q=80",
+    "https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?w=600&q=80",
+  ];
+  const image = defaultImages[nextSalonId % defaultImages.length];
+
+  const salon = { id: nextSalonId++, name: salonName, location, rating: 0, reviews: 0, image };
+  salons.push(salon);
+
+  const owner = { id: salon.id, salonId: salon.id, ownerName, email, phone, password, categories };
+  salonOwners.push(owner);
+
+  res.status(201).json({ success: true, message: "Salon registered successfully", data: salon });
+});
+
+app.post("/salons/login", (req, res) => {
+  const { email, password } = req.body;
+  const owner = salonOwners.find((o) => o.email === email && o.password === password);
+  if (!owner) return res.status(401).json({ success: false, message: "Invalid email or password" });
+  const salon = salons.find((s) => s.id === owner.salonId);
+  const { password: _, ...safe } = owner;
+  res.json({ success: true, owner: safe, salon });
 });
 
 app.get("/services/:salonId", (req, res) => {
