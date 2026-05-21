@@ -4,25 +4,32 @@ const cors       = require("cors");
 const crypto     = require("crypto");
 const mongoose   = require("mongoose");
 const Razorpay   = require("razorpay");
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const ADMIN_EMAIL    = process.env.ADMIN_EMAIL || "glowora.app@gmail.com";
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
+const ADMIN_EMAIL   = process.env.ADMIN_EMAIL || "glowora.app@gmail.com";
+const FROM_EMAIL    = "glowora.app@gmail.com";
+const FROM_NAME     = "Glowora";
 
-if (RESEND_API_KEY) {
-  console.log("✅ Resend email ready");
+if (BREVO_API_KEY) {
+  console.log("✅ Brevo email ready");
 } else {
-  console.warn("⚠️  RESEND_API_KEY missing — emails disabled");
+  console.warn("⚠️  BREVO_API_KEY missing — emails disabled");
 }
 
 async function sendMail(to, subject, html) {
-  if (!RESEND_API_KEY) return;
+  if (!BREVO_API_KEY) return;
   try {
-    const res = await fetch("https://api.resend.com/emails", {
+    const res = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${RESEND_API_KEY}`,
+        "api-key": BREVO_API_KEY,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ from: "Glowora <onboarding@resend.dev>", to, subject, html }),
+      body: JSON.stringify({
+        sender:  { name: FROM_NAME, email: FROM_EMAIL },
+        to:      [{ email: to }],
+        subject,
+        htmlContent: html,
+      }),
     });
     const data = await res.json();
     if (res.ok) console.log(`✅ Email sent → ${to}`);
@@ -254,28 +261,33 @@ app.post("/salons/register", async (req, res) => {
 
     res.status(201).json({ success:true, message:"Salon registered successfully", data:salon.toJSON() });
 
-    // Single admin email with full details + forward-ready welcome message for owner
-    sendMail(ADMIN_EMAIL, `🎉 New Salon Registered: ${salonName}`, `
+    // Welcome email → salon owner
+    sendMail(email, `Welcome to Glowora — You're Listed! 🎉`, `
       <div style="font-family:sans-serif;max-width:600px;margin:auto;color:#1a1a1a">
-        <h2 style="color:#7c3aed">New Salon on Glowora 🎉</h2>
-        <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
+        <div style="background:#7c3aed;padding:32px;text-align:center;border-radius:12px 12px 0 0">
+          <h1 style="color:#fff;margin:0;font-size:26px">✦ Glowora</h1>
+        </div>
+        <div style="background:#fff;padding:32px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb">
+          <h2 style="color:#7c3aed">Welcome, ${ownerName || salonName}! 🎉</h2>
+          <p>Your salon <strong>${salonName}</strong> is now live on Glowora.</p>
+          <p>Customers in your area can discover and book your services right away.</p>
+          <p>If you need any help, just reply to this email.</p>
+          <p style="color:#6b7280;font-size:13px;margin-top:24px">— The Glowora Team</p>
+        </div>
+      </div>
+    `);
+
+    // Admin alert
+    sendMail(ADMIN_EMAIL, `🎉 New Salon: ${salonName}`, `
+      <div style="font-family:sans-serif;max-width:600px;margin:auto;color:#1a1a1a">
+        <h2 style="color:#7c3aed">New Salon Registered</h2>
+        <table style="width:100%;border-collapse:collapse">
           <tr><td style="padding:8px 0;color:#6b7280;width:100px">Salon</td><td><strong>${salonName}</strong></td></tr>
           <tr><td style="padding:8px 0;color:#6b7280">Owner</td><td>${ownerName || "—"}</td></tr>
           <tr><td style="padding:8px 0;color:#6b7280">Email</td><td><a href="mailto:${email}">${email}</a></td></tr>
           <tr><td style="padding:8px 0;color:#6b7280">Phone</td><td>${phone || "—"}</td></tr>
           <tr><td style="padding:8px 0;color:#6b7280">Location</td><td>${[address, city].filter(Boolean).join(", ") || "—"}</td></tr>
         </table>
-
-        <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0"/>
-        <p style="color:#6b7280;font-size:13px;margin-bottom:8px">📋 <strong>Forward the message below to the salon owner (${email}):</strong></p>
-
-        <div style="background:#f9fafb;border-radius:8px;padding:20px;border:1px solid #e5e7eb">
-          <h3 style="color:#7c3aed;margin-top:0">Welcome to Glowora, ${ownerName || salonName}! 🎉</h3>
-          <p>Your salon <strong>${salonName}</strong> is now live on Glowora.</p>
-          <p>Customers in your area can discover and book your services right away.</p>
-          <p>If you need any help, reply to this email.</p>
-          <p style="color:#6b7280;font-size:13px;margin-bottom:0">— The Glowora Team</p>
-        </div>
       </div>
     `);
 
