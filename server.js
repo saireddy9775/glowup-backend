@@ -1,9 +1,31 @@
 require("dotenv").config();
-const express  = require("express");
-const cors     = require("cors");
-const crypto   = require("crypto");
-const mongoose = require("mongoose");
-const Razorpay = require("razorpay");
+const express    = require("express");
+const cors       = require("cors");
+const crypto     = require("crypto");
+const mongoose   = require("mongoose");
+const Razorpay   = require("razorpay");
+const nodemailer = require("nodemailer");
+
+const GMAIL_USER   = process.env.GMAIL_USER;
+const GMAIL_PASS   = process.env.GMAIL_PASS;
+const ADMIN_EMAIL  = process.env.ADMIN_EMAIL || GMAIL_USER;
+
+let mailer = null;
+if (GMAIL_USER && GMAIL_PASS) {
+  mailer = nodemailer.createTransport({
+    service: "gmail",
+    auth: { user: GMAIL_USER, pass: GMAIL_PASS },
+  });
+  console.log("✅ Mailer ready");
+} else {
+  console.warn("⚠️  GMAIL_USER / GMAIL_PASS missing — emails disabled");
+}
+
+async function sendMail(to, subject, html) {
+  if (!mailer) return;
+  try { await mailer.sendMail({ from: `"Glowora" <${GMAIL_USER}>`, to, subject, html }); }
+  catch (e) { console.error("Mail error:", e.message); }
+}
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -228,6 +250,32 @@ app.post("/salons/register", async (req, res) => {
     await SalonOwner.create({ salonId:salon._id, ownerName, email, phone, password, categories });
 
     res.status(201).json({ success:true, message:"Salon registered successfully", data:salon.toJSON() });
+
+    // Welcome email to salon owner
+    sendMail(email, "Welcome to Glowora — You're Listed! 🎉", `
+      <div style="font-family:sans-serif;max-width:600px;margin:auto">
+        <h2 style="color:#7c3aed">Welcome to Glowora, ${ownerName || salonName}!</h2>
+        <p>Your salon <strong>${salonName}</strong> is now live on Glowora.</p>
+        <p>Customers can discover and book your services right away.</p>
+        <br/>
+        <p style="color:#6b7280;font-size:13px">— The Glowora Team</p>
+      </div>
+    `);
+
+    // Admin alert
+    sendMail(ADMIN_EMAIL, `New Salon Registered: ${salonName}`, `
+      <div style="font-family:sans-serif;max-width:600px;margin:auto">
+        <h2 style="color:#7c3aed">New Salon on Glowora</h2>
+        <table style="width:100%;border-collapse:collapse">
+          <tr><td style="padding:6px 0;color:#6b7280">Salon</td><td><strong>${salonName}</strong></td></tr>
+          <tr><td style="padding:6px 0;color:#6b7280">Owner</td><td>${ownerName || "—"}</td></tr>
+          <tr><td style="padding:6px 0;color:#6b7280">Email</td><td>${email}</td></tr>
+          <tr><td style="padding:6px 0;color:#6b7280">Phone</td><td>${phone || "—"}</td></tr>
+          <tr><td style="padding:6px 0;color:#6b7280">Location</td><td>${[address, city].filter(Boolean).join(", ") || "—"}</td></tr>
+        </table>
+      </div>
+    `);
+
   } catch (err) {
     if (err.code === 11000)
       return res.status(400).json({ success:false, message:"This email is already registered" });
