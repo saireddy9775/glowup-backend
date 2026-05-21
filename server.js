@@ -254,28 +254,28 @@ app.post("/salons/register", async (req, res) => {
 
     res.status(201).json({ success:true, message:"Salon registered successfully", data:salon.toJSON() });
 
-    // Welcome email to salon owner
-    sendMail(email, "Welcome to Glowora — You're Listed! 🎉", `
-      <div style="font-family:sans-serif;max-width:600px;margin:auto">
-        <h2 style="color:#7c3aed">Welcome to Glowora, ${ownerName || salonName}!</h2>
-        <p>Your salon <strong>${salonName}</strong> is now live on Glowora.</p>
-        <p>Customers can discover and book your services right away.</p>
-        <br/>
-        <p style="color:#6b7280;font-size:13px">— The Glowora Team</p>
-      </div>
-    `);
-
-    // Admin alert
-    sendMail(ADMIN_EMAIL, `New Salon Registered: ${salonName}`, `
-      <div style="font-family:sans-serif;max-width:600px;margin:auto">
-        <h2 style="color:#7c3aed">New Salon on Glowora</h2>
-        <table style="width:100%;border-collapse:collapse">
-          <tr><td style="padding:6px 0;color:#6b7280">Salon</td><td><strong>${salonName}</strong></td></tr>
-          <tr><td style="padding:6px 0;color:#6b7280">Owner</td><td>${ownerName || "—"}</td></tr>
-          <tr><td style="padding:6px 0;color:#6b7280">Email</td><td>${email}</td></tr>
-          <tr><td style="padding:6px 0;color:#6b7280">Phone</td><td>${phone || "—"}</td></tr>
-          <tr><td style="padding:6px 0;color:#6b7280">Location</td><td>${[address, city].filter(Boolean).join(", ") || "—"}</td></tr>
+    // Single admin email with full details + forward-ready welcome message for owner
+    sendMail(ADMIN_EMAIL, `🎉 New Salon Registered: ${salonName}`, `
+      <div style="font-family:sans-serif;max-width:600px;margin:auto;color:#1a1a1a">
+        <h2 style="color:#7c3aed">New Salon on Glowora 🎉</h2>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
+          <tr><td style="padding:8px 0;color:#6b7280;width:100px">Salon</td><td><strong>${salonName}</strong></td></tr>
+          <tr><td style="padding:8px 0;color:#6b7280">Owner</td><td>${ownerName || "—"}</td></tr>
+          <tr><td style="padding:8px 0;color:#6b7280">Email</td><td><a href="mailto:${email}">${email}</a></td></tr>
+          <tr><td style="padding:8px 0;color:#6b7280">Phone</td><td>${phone || "—"}</td></tr>
+          <tr><td style="padding:8px 0;color:#6b7280">Location</td><td>${[address, city].filter(Boolean).join(", ") || "—"}</td></tr>
         </table>
+
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0"/>
+        <p style="color:#6b7280;font-size:13px;margin-bottom:8px">📋 <strong>Forward the message below to the salon owner (${email}):</strong></p>
+
+        <div style="background:#f9fafb;border-radius:8px;padding:20px;border:1px solid #e5e7eb">
+          <h3 style="color:#7c3aed;margin-top:0">Welcome to Glowora, ${ownerName || salonName}! 🎉</h3>
+          <p>Your salon <strong>${salonName}</strong> is now live on Glowora.</p>
+          <p>Customers in your area can discover and book your services right away.</p>
+          <p>If you need any help, reply to this email.</p>
+          <p style="color:#6b7280;font-size:13px;margin-bottom:0">— The Glowora Team</p>
+        </div>
       </div>
     `);
 
