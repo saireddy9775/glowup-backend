@@ -16,18 +16,22 @@ if (GMAIL_USER && GMAIL_PASS) {
     host: "smtp.gmail.com",
     port: 465,
     secure: true,
-    family: 4,
     auth: { user: GMAIL_USER, pass: GMAIL_PASS },
+    socketOptions: { family: 4 },
   });
-  console.log("✅ Mailer ready");
+  mailer.verify()
+    .then(() => console.log("✅ Mailer verified — SMTP connection OK"))
+    .catch(e  => console.error("❌ Mailer verify failed:", e.message));
 } else {
   console.warn("⚠️  GMAIL_USER / GMAIL_PASS missing — emails disabled");
 }
 
 async function sendMail(to, subject, html) {
-  if (!mailer) return;
-  try { await mailer.sendMail({ from: `"Glowora" <${GMAIL_USER}>`, to, subject, html }); }
-  catch (e) { console.error("Mail error:", e.message); }
+  if (!mailer) { console.warn("Mail skipped — mailer not ready"); return; }
+  try {
+    await mailer.sendMail({ from: `"Glowora" <${GMAIL_USER}>`, to, subject, html });
+    console.log(`✅ Email sent → ${to} | ${subject}`);
+  } catch (e) { console.error("❌ Mail error:", e.message); }
 }
 
 const app  = express();
