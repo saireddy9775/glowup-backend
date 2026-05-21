@@ -13,7 +13,10 @@ const ADMIN_EMAIL  = process.env.ADMIN_EMAIL || GMAIL_USER;
 let mailer = null;
 if (GMAIL_USER && GMAIL_PASS) {
   mailer = nodemailer.createTransport({
-    service: "gmail",
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
+    family: 4,
     auth: { user: GMAIL_USER, pass: GMAIL_PASS },
   });
   console.log("✅ Mailer ready");
