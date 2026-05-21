@@ -4,34 +4,30 @@ const cors       = require("cors");
 const crypto     = require("crypto");
 const mongoose   = require("mongoose");
 const Razorpay   = require("razorpay");
-const nodemailer = require("nodemailer");
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const ADMIN_EMAIL    = process.env.ADMIN_EMAIL || "glowora.app@gmail.com";
 
-const GMAIL_USER   = process.env.GMAIL_USER;
-const GMAIL_PASS   = process.env.GMAIL_PASS;
-const ADMIN_EMAIL  = process.env.ADMIN_EMAIL || GMAIL_USER;
-
-let mailer = null;
-if (GMAIL_USER && GMAIL_PASS) {
-  mailer = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
-    auth: { user: GMAIL_USER, pass: GMAIL_PASS },
-    socketOptions: { family: 4 },
-  });
-  mailer.verify()
-    .then(() => console.log("✅ Mailer verified — SMTP connection OK"))
-    .catch(e  => console.error("❌ Mailer verify failed:", e.message));
+if (RESEND_API_KEY) {
+  console.log("✅ Resend email ready");
 } else {
-  console.warn("⚠️  GMAIL_USER / GMAIL_PASS missing — emails disabled");
+  console.warn("⚠️  RESEND_API_KEY missing — emails disabled");
 }
 
 async function sendMail(to, subject, html) {
-  if (!mailer) { console.warn("Mail skipped — mailer not ready"); return; }
+  if (!RESEND_API_KEY) return;
   try {
-    await mailer.sendMail({ from: `"Glowora" <${GMAIL_USER}>`, to, subject, html });
-    console.log(`✅ Email sent → ${to} | ${subject}`);
-  } catch (e) { console.error("❌ Mail error:", e.message); }
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ from: "Glowora <onboarding@resend.dev>", to, subject, html }),
+    });
+    const data = await res.json();
+    if (res.ok) console.log(`✅ Email sent → ${to}`);
+    else console.error("❌ Email error:", JSON.stringify(data));
+  } catch (e) { console.error("❌ Email error:", e.message); }
 }
 
 const app  = express();
