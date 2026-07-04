@@ -3,11 +3,12 @@ const express    = require("express");
 const cors       = require("cors");
 const crypto     = require("crypto");
 const mongoose   = require("mongoose");
+const bcrypt     = require("bcryptjs");
 const Razorpay   = require("razorpay");
 const BREVO_API_KEY = process.env.BREVO_API_KEY;
-const ADMIN_EMAIL   = process.env.ADMIN_EMAIL || "glowora.app@gmail.com";
-const FROM_EMAIL    = "glowora.app@gmail.com";
-const FROM_NAME     = "Glowora";
+const ADMIN_EMAIL   = process.env.ADMIN_EMAIL || "bokcut.app@gmail.com";
+const FROM_EMAIL    = "bokcut.app@gmail.com";
+const FROM_NAME     = "Bokcut";
 
 if (BREVO_API_KEY) {
   console.log("✅ Brevo email ready");
@@ -91,6 +92,11 @@ const SalonOwnerSchema = new mongoose.Schema({
   password:  { type: String, required: true },
   categories: [String],
 }, { toJSON: toJ });
+SalonOwnerSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+  this.password = await bcrypt.hash(this.password, 10);
+  next();
+});
 
 const ServiceSchema = new mongoose.Schema({
   salonId:  { type: mongoose.Schema.Types.ObjectId, ref: "Salon", required: true },
@@ -106,6 +112,11 @@ const UserSchema = new mongoose.Schema({
   phone:    String,
   wallet:   { type: Number, default: 500 },
 }, { toJSON: toJ });
+UserSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+  this.password = await bcrypt.hash(this.password, 10);
+  next();
+});
 
 const BookingSchema = new mongoose.Schema({
   customerName:  String,
@@ -156,6 +167,19 @@ async function seed() {
 }
 mongoose.connection.once("open", seed);
 
+// ── Password helpers ─────────────────────────────────────
+// Legacy accounts have plaintext passwords. Accept either form on login,
+// then transparently upgrade legacy ones to a bcrypt hash.
+const isBcryptHash = (v) => typeof v === "string" && /^\$2[aby]\$/.test(v);
+
+async function checkPassword(candidate, doc) {
+  if (isBcryptHash(doc.password)) return bcrypt.compare(candidate, doc.password);
+  if (candidate !== doc.password) return false;
+  doc.password = candidate; // pre-save hook re-hashes since isModified("password")
+  await doc.save();
+  return true;
+}
+
 // ── Auth ──────────────────────────────────────────────────
 app.post("/auth/register", async (req, res) => {
   const { name, email, password, phone } = req.body;
@@ -172,8 +196,9 @@ app.post("/auth/register", async (req, res) => {
 });
 
 app.post("/auth/login", async (req, res) => {
-  const user = await User.findOne({ email:req.body.email?.toLowerCase(), password:req.body.password });
-  if (!user) return res.status(401).json({ success:false, message:"Invalid email or password" });
+  const user = await User.findOne({ email:req.body.email?.toLowerCase() });
+  if (!user || !(await checkPassword(req.body.password || "", user)))
+    return res.status(401).json({ success:false, message:"Invalid email or password" });
   const { password:_, ...safe } = user.toJSON();
   res.json({ success:true, user:safe });
 });
@@ -262,17 +287,17 @@ app.post("/salons/register", async (req, res) => {
     res.status(201).json({ success:true, message:"Salon registered successfully", data:salon.toJSON() });
 
     // Welcome email → salon owner
-    sendMail(email, `Welcome to Glowora — You're Listed! 🎉`, `
+    sendMail(email, `Welcome to Bokcut — You're Listed! 🎉`, `
       <div style="font-family:sans-serif;max-width:600px;margin:auto;color:#1a1a1a">
         <div style="background:#7c3aed;padding:32px;text-align:center;border-radius:12px 12px 0 0">
-          <h1 style="color:#fff;margin:0;font-size:26px">✦ Glowora</h1>
+          <h1 style="color:#fff;margin:0;font-size:26px">✦ Bokcut</h1>
         </div>
         <div style="background:#fff;padding:32px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb">
           <h2 style="color:#7c3aed">Welcome, ${ownerName || salonName}! 🎉</h2>
-          <p>Your salon <strong>${salonName}</strong> is now live on Glowora.</p>
+          <p>Your salon <strong>${salonName}</strong> is now live on Bokcut.</p>
           <p>Customers in your area can discover and book your services right away.</p>
           <p>If you need any help, just reply to this email.</p>
-          <p style="color:#6b7280;font-size:13px;margin-top:24px">— The Glowora Team</p>
+          <p style="color:#6b7280;font-size:13px;margin-top:24px">— The Bokcut Team</p>
         </div>
       </div>
     `);
@@ -300,8 +325,9 @@ app.post("/salons/register", async (req, res) => {
 });
 
 app.post("/salons/login", async (req, res) => {
-  const owner = await SalonOwner.findOne({ email:req.body.email?.toLowerCase(), password:req.body.password });
-  if (!owner) return res.status(401).json({ success:false, message:"Invalid email or password" });
+  const owner = await SalonOwner.findOne({ email:req.body.email?.toLowerCase() });
+  if (!owner || !(await checkPassword(req.body.password || "", owner)))
+    return res.status(401).json({ success:false, message:"Invalid email or password" });
   const salon = await Salon.findById(owner.salonId).lean();
   const { password:_, ...safe } = owner.toJSON();
   res.json({ success:true, owner:safe, salon: salon ? { ...salon, id:salon._id.toString() } : null });
@@ -351,4 +377,4 @@ app.get("/bookings", async (_req, res) => {
   res.json({ success:true, total:data.length, data });
 });
 
-app.listen(PORT, () => console.log(`✅ Glowora backend running on port ${PORT}`));
+app.listen(PORT, () => console.log(`✅ Bokcut backend running on port ${PORT}`));
