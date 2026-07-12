@@ -146,10 +146,11 @@ const Booking    = mongoose.model("Booking",    BookingSchema);
 async function seed() {
   if (await Salon.countDocuments() > 0) return;
   console.log("🌱 Seeding demo salons…");
-  const [s1, s2, s3] = await Promise.all([
-    Salon.create({ name:"Glamour Studio",   location:"Koramangala, Bengaluru", rating:4.8, reviews:312, image:"https://images.unsplash.com/photo-1560066984-138daaa0ce98?w=600&q=80" }),
-    Salon.create({ name:"The Style Lounge", location:"Indiranagar, Bengaluru",  rating:4.5, reviews:189, image:"https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&q=80" }),
-    Salon.create({ name:"Bliss Salon",      location:"HSR Layout, Bengaluru",   rating:4.6, reviews:247, image:"https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=600&q=80" }),
+  const [s1, s2, s3, s4] = await Promise.all([
+    Salon.create({ name:"Glamour Studio",   location:"Koramangala, Bengaluru", rating:4.8, reviews:312, image:"https://images.unsplash.com/photo-1560066984-138daaa0ce98?w=600&q=80", categories:["Hair","Skin care"] }),
+    Salon.create({ name:"The Style Lounge", location:"Indiranagar, Bengaluru",  rating:4.5, reviews:189, image:"https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&q=80", categories:["Hair","Nails","Massage"] }),
+    Salon.create({ name:"Bliss Salon",      location:"HSR Layout, Bengaluru",   rating:4.6, reviews:247, image:"https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=600&q=80", categories:["Hair","Nails","Wellness & Spa"] }),
+    Salon.create({ name:"Urban Glow Salon", location:"Banjara Hills, Hyderabad", rating:4.7, reviews:201, image:"https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=600&q=80", categories:["Hair","Skin care","Makeup"] }),
   ]);
   await Service.insertMany([
     { salonId:s1._id, name:"Test Payment ₹1", duration:5,  price:1    },
@@ -162,6 +163,9 @@ async function seed() {
     { salonId:s3._id, name:"Haircut",         duration:30, price:449  },
     { salonId:s3._id, name:"Pedicure",        duration:45, price:649  },
     { salonId:s3._id, name:"Full Body Waxing",duration:60, price:1499 },
+    { salonId:s4._id, name:"Haircut",         duration:30, price:429  },
+    { salonId:s4._id, name:"Facial",          duration:60, price:949  },
+    { salonId:s4._id, name:"Makeup",          duration:60, price:1299 },
   ]);
   console.log("✅ Seed complete");
 }
@@ -214,7 +218,14 @@ app.post("/wallet/deduct", async (req, res) => {
 });
 
 app.post("/wallet/topup", async (req, res) => {
-  const user = await User.findByIdAndUpdate(req.body.userId, { $inc:{ wallet:req.body.amount } }, { new:true });
+  const { userId, amount, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+  if (!userId || !amount || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature)
+    return res.status(400).json({ success:false, message:"Payment verification details are required" });
+  const expected = crypto.createHmac("sha256", RAZORPAY_KEY_SECRET)
+    .update(`${razorpay_order_id}|${razorpay_payment_id}`).digest("hex");
+  if (expected !== razorpay_signature)
+    return res.status(400).json({ success:false, message:"Payment verification failed" });
+  const user = await User.findByIdAndUpdate(userId, { $inc:{ wallet:amount } }, { new:true });
   if (!user) return res.status(404).json({ success:false, message:"User not found" });
   res.json({ success:true, balance:user.wallet });
 });
@@ -370,11 +381,6 @@ app.post("/bookings", async (req, res) => {
     });
     res.status(201).json({ success:true, message:"Booking confirmed!", data:booking.toJSON() });
   } catch { res.status(500).json({ success:false, message:"Booking failed" }); }
-});
-
-app.get("/bookings", async (_req, res) => {
-  const data = await Booking.find().lean();
-  res.json({ success:true, total:data.length, data });
 });
 
 app.listen(PORT, () => console.log(`✅ Bokcut backend running on port ${PORT}`));
