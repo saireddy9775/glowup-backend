@@ -136,11 +136,22 @@ const BookingSchema = new mongoose.Schema({
   createdAt:     { type: Date, default: Date.now },
 }, { toJSON: toJ });
 
+const ReviewSchema = new mongoose.Schema({
+  bookingId:    { type: mongoose.Schema.Types.ObjectId, ref: "Booking", required: true, unique: true },
+  salonId:      { type: mongoose.Schema.Types.ObjectId, ref: "Salon", required: true },
+  salon:        String,
+  customerName: String,
+  rating:       { type: Number, required: true, min: 1, max: 5 },
+  comment:      String,
+  createdAt:    { type: Date, default: Date.now },
+}, { toJSON: toJ });
+
 const Salon      = mongoose.model("Salon",      SalonSchema);
 const SalonOwner = mongoose.model("SalonOwner", SalonOwnerSchema);
 const Service    = mongoose.model("Service",    ServiceSchema);
 const User       = mongoose.model("User",       UserSchema);
 const Booking    = mongoose.model("Booking",    BookingSchema);
+const Review     = mongoose.model("Review",     ReviewSchema);
 
 // ── Seed 3 demo salons on first run ───────────────────────
 async function seed() {
@@ -381,6 +392,31 @@ app.post("/bookings", async (req, res) => {
     });
     res.status(201).json({ success:true, message:"Booking confirmed!", data:booking.toJSON() });
   } catch { res.status(500).json({ success:false, message:"Booking failed" }); }
+});
+
+// ── Reviews ───────────────────────────────────────────────
+app.post("/reviews", async (req, res) => {
+  const { bookingId, rating, comment } = req.body;
+  if (!bookingId || !rating)
+    return res.status(400).json({ success:false, message:"Booking and rating are required" });
+  try {
+    const booking = await Booking.findById(bookingId).lean();
+    if (!booking) return res.status(404).json({ success:false, message:"Booking not found" });
+    const review = await Review.create({
+      bookingId, salonId:booking.salonId, salon:booking.salon,
+      customerName:booking.customerName, rating, comment,
+    });
+    res.status(201).json({ success:true, review:review.toJSON() });
+  } catch (err) {
+    if (err.code === 11000)
+      return res.status(400).json({ success:false, message:"This booking has already been reviewed" });
+    res.status(500).json({ success:false, message:"Failed to submit review" });
+  }
+});
+
+app.get("/reviews", async (_req, res) => {
+  const reviews = await Review.find().sort({ createdAt:-1 }).limit(20).lean();
+  res.json({ success:true, data: reviews.map(r => ({ ...r, id:r._id.toString() })) });
 });
 
 app.listen(PORT, () => console.log(`✅ Bokcut backend running on port ${PORT}`));
