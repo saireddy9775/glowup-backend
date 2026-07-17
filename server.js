@@ -373,6 +373,35 @@ app.get("/services/:salonId", async (req, res) => {
 });
 
 // ── Bookings ──────────────────────────────────────────────
+
+// Team size is collected as a rough range during salon registration, not an
+// exact headcount. Use the lower bound of each range as the guaranteed
+// concurrent-booking capacity, so we never overbook beyond what's certain.
+function teamSizeToCapacity(teamSize) {
+  if (!teamSize) return 1;
+  if (teamSize.startsWith("Just me")) return 1;
+  if (teamSize.startsWith("2")) return 2;
+  if (teamSize.startsWith("5")) return 5;
+  if (teamSize.startsWith("More than 10")) return 10;
+  return 1;
+}
+
+// GET /availability/:salonId/:date -> how many slots are already booked per
+// time, and the salon's capacity, so the client can grey out full slots.
+app.get("/availability/:salonId/:date", async (req, res) => {
+  try {
+    const salon = await Salon.findById(req.params.salonId).lean();
+    if (!salon) return res.status(404).json({ success:false, message:"Salon not found" });
+    const capacity = teamSizeToCapacity(salon.teamSize);
+    const bookings = await Booking.find({ salonId:salon._id, date:req.params.date, status:{ $ne:"cancelled" } }).lean();
+    const bookedCounts = {};
+    for (const b of bookings) bookedCounts[b.time] = (bookedCounts[b.time] || 0) + 1;
+    res.json({ success:true, capacity, bookedCounts });
+  } catch {
+    res.status(404).json({ success:false, message:"Salon not found" });
+  }
+});
+
 app.post("/bookings", async (req, res) => {
   const { customerName, phone, salonId, serviceId, date, time, paymentMethod, paymentId, orderId } = req.body;
   if (!customerName || !phone || !salonId || !serviceId || !date || !time)
@@ -384,6 +413,10 @@ app.post("/bookings", async (req, res) => {
     ]);
     if (!salon)   return res.status(404).json({ success:false, message:"Salon not found" });
     if (!service) return res.status(404).json({ success:false, message:"Service not found" });
+    const capacity = teamSizeToCapacity(salon.teamSize);
+    const existingCount = await Booking.countDocuments({ salonId, date, time, status:{ $ne:"cancelled" } });
+    if (existingCount >= capacity)
+      return res.status(409).json({ success:false, message:"This time slot is fully booked. Please choose another time." });
     const booking = await Booking.create({
       customerName, phone, salonId, salon:salon.name,
       serviceId, service:service.name, price:service.price,
