@@ -153,30 +153,33 @@ const User       = mongoose.model("User",       UserSchema);
 const Booking    = mongoose.model("Booking",    BookingSchema);
 const Review     = mongoose.model("Review",     ReviewSchema);
 
-// ── Seed 3 demo salons on first run ───────────────────────
+// ── Seed 5 demo salons on first run ───────────────────────
 async function seed() {
   if (await Salon.countDocuments() > 0) return;
   console.log("🌱 Seeding demo salons…");
-  const [s1, s2, s3, s4] = await Promise.all([
-    Salon.create({ name:"Glamour Studio",   location:"Koramangala, Bengaluru", rating:4.8, reviews:312, image:"https://images.unsplash.com/photo-1560066984-138daaa0ce98?w=600&q=80", categories:["Hair","Skin care"] }),
-    Salon.create({ name:"The Style Lounge", location:"Indiranagar, Bengaluru",  rating:4.5, reviews:189, image:"https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&q=80", categories:["Hair","Nails","Massage"] }),
-    Salon.create({ name:"Bliss Salon",      location:"HSR Layout, Bengaluru",   rating:4.6, reviews:247, image:"https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=600&q=80", categories:["Hair","Nails","Wellness & Spa"] }),
-    Salon.create({ name:"Urban Glow Salon", location:"Banjara Hills, Hyderabad", rating:4.7, reviews:201, image:"https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=600&q=80", categories:["Hair","Skin care","Makeup"] }),
+  const [s1, s2, s3, s4, s5] = await Promise.all([
+    Salon.create({ name:"The Clip House",         location:"Koramangala, Bengaluru", image:"https://images.unsplash.com/photo-1560066984-138daaa0ce98?w=600&q=80", categories:["Hair","Barber"] }),
+    Salon.create({ name:"Blush & Bloom Studio",   location:"Indiranagar, Bengaluru",  image:"https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&q=80", categories:["Skin care","Makeup","Brows & Lashes"] }),
+    Salon.create({ name:"Radiance Nail Bar",      location:"HSR Layout, Bengaluru",   image:"https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=600&q=80", categories:["Nails","Skin care"] }),
+    Salon.create({ name:"Serene Spa & Wellness",  location:"Jubilee Hills, Hyderabad", image:"https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=600&q=80", categories:["Wellness & Spa","Massage"] }),
+    Salon.create({ name:"Urban Grooming Lounge",  location:"Gachibowli, Hyderabad",   image:"https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?w=600&q=80", categories:["Hair","Barber","Skin care"] }),
   ]);
   await Service.insertMany([
     { salonId:s1._id, name:"Test Payment ₹1", duration:5,  price:1    },
-    { salonId:s1._id, name:"Haircut",         duration:30, price:499  },
-    { salonId:s1._id, name:"Hair Colouring",  duration:90, price:1999 },
-    { salonId:s1._id, name:"Facial",          duration:60, price:999  },
-    { salonId:s2._id, name:"Haircut",         duration:30, price:399  },
-    { salonId:s2._id, name:"Manicure",        duration:45, price:599  },
-    { salonId:s2._id, name:"Head Massage",    duration:30, price:349  },
-    { salonId:s3._id, name:"Haircut",         duration:30, price:449  },
-    { salonId:s3._id, name:"Pedicure",        duration:45, price:649  },
-    { salonId:s3._id, name:"Full Body Waxing",duration:60, price:1499 },
-    { salonId:s4._id, name:"Haircut",         duration:30, price:429  },
-    { salonId:s4._id, name:"Facial",          duration:60, price:949  },
-    { salonId:s4._id, name:"Makeup",          duration:60, price:1299 },
+    { salonId:s1._id, name:"Haircut",         duration:30, price:349  },
+    { salonId:s1._id, name:"Beard Trim",      duration:20, price:149  },
+    { salonId:s1._id, name:"Hair Colouring",  duration:90, price:1499 },
+    { salonId:s2._id, name:"Facial",          duration:60, price:799  },
+    { salonId:s2._id, name:"Party Makeup",    duration:60, price:1299 },
+    { salonId:s2._id, name:"Eyebrow Threading", duration:15, price:99 },
+    { salonId:s3._id, name:"Manicure",        duration:45, price:499  },
+    { salonId:s3._id, name:"Pedicure",        duration:45, price:599  },
+    { salonId:s3._id, name:"Nail Art",        duration:30, price:299  },
+    { salonId:s4._id, name:"Full Body Massage", duration:60, price:1499 },
+    { salonId:s4._id, name:"Foot Reflexology",  duration:30, price:699  },
+    { salonId:s5._id, name:"Haircut",         duration:30, price:399  },
+    { salonId:s5._id, name:"Beard Styling",   duration:20, price:199  },
+    { salonId:s5._id, name:"Facial",          duration:60, price:699  },
   ]);
   console.log("✅ Seed complete");
 }
