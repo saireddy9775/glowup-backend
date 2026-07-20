@@ -158,10 +158,10 @@ async function seed() {
   if (await Salon.countDocuments() > 0) return;
   console.log("🌱 Seeding demo salons…");
   const [s1, s2, s3, s4, s5, s6, s7, s8, s9, s10] = await Promise.all([
-    Salon.create({ name:"The Clip House",         location:"Koramangala, Bengaluru", image:"https://images.unsplash.com/photo-1560066984-138daaa0ce98?w=600&q=80", categories:["Hair","Barber"] }),
+    Salon.create({ name:"The Clip House",         location:"Koramangala, Bengaluru", image:"https://images.unsplash.com/photo-1621645582931-d1d3e6564943?w=600&q=80", categories:["Hair","Barber"] }),
     Salon.create({ name:"Blush & Bloom Studio",   location:"Indiranagar, Bengaluru",  image:"https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&q=80", categories:["Skin care","Makeup","Brows & Lashes"] }),
-    Salon.create({ name:"Radiance Nail Bar",      location:"HSR Layout, Bengaluru",   image:"https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=600&q=80", categories:["Nails","Skin care"] }),
-    Salon.create({ name:"Silver Scissors Salon",  location:"Jayanagar, Bengaluru",    image:"https://images.unsplash.com/photo-1560066984-138daaa0ce98?w=600&q=80", categories:["Hair","Skin care"] }),
+    Salon.create({ name:"Radiance Nail Bar",      location:"HSR Layout, Bengaluru",   image:"https://images.unsplash.com/photo-1602585578130-c9076e09330d?w=600&q=80", categories:["Nails","Skin care"] }),
+    Salon.create({ name:"Silver Scissors Salon",  location:"Jayanagar, Bengaluru",    image:"https://images.unsplash.com/photo-1621645582931-d1d3e6564943?w=600&q=80", categories:["Hair","Skin care"] }),
     Salon.create({ name:"The Beauty Bar",         location:"Whitefield, Bengaluru",   image:"https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&q=80", categories:["Nails","Makeup","Brows & Lashes"] }),
     Salon.create({ name:"Serene Spa & Wellness",  location:"Jubilee Hills, Hyderabad", image:"https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=600&q=80", categories:["Wellness & Spa","Massage"] }),
     Salon.create({ name:"Urban Grooming Lounge",  location:"Gachibowli, Hyderabad",   image:"https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?w=600&q=80", categories:["Hair","Barber","Skin care"] }),
