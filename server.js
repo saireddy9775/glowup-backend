@@ -244,6 +244,8 @@ app.post("/auth/login", async (req, res) => {
 // ── Wallet ────────────────────────────────────────────────
 app.post("/wallet/deduct", async (req, res) => {
   const { userId, amount } = req.body;
+  if (!userId || typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0)
+    return res.status(400).json({ success:false, message:"A valid positive amount is required" });
   const user = await User.findById(userId);
   if (!user) return res.status(404).json({ success:false, message:"User not found" });
   if (user.wallet < amount) return res.status(400).json({ success:false, message:"Insufficient balance" });
@@ -299,7 +301,6 @@ app.post("/salons/register", async (req, res) => {
     return res.status(400).json({ success:false, message:"Salon name, email and password are required" });
 
   const IMAGES = [
-    "https://images.unsplash.com/photo-1560066984-138daaa0ce98?w=600&q=80",
     "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&q=80",
     "https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=600&q=80",
     "https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=600&q=80",
@@ -312,7 +313,7 @@ app.post("/salons/register", async (req, res) => {
       location: [address, city].filter(Boolean).join(", ") || "India",
       lat, lng, categories, teamSize, hours,
       registeredServices: svcList,
-      rating:  5.0,
+      rating:  0,
       reviews: 0,
       image: IMAGES[Math.floor(Math.random() * IMAGES.length)],
     });
@@ -462,6 +463,16 @@ app.post("/reviews", async (req, res) => {
       bookingId, salonId:booking.salonId, salon:booking.salon,
       customerName:booking.customerName, rating, comment,
     });
+    const [agg] = await Review.aggregate([
+      { $match: { salonId: booking.salonId } },
+      { $group: { _id: "$salonId", avg: { $avg: "$rating" }, count: { $sum: 1 } } },
+    ]);
+    if (agg) {
+      await Salon.findByIdAndUpdate(booking.salonId, {
+        rating: Math.round(agg.avg * 10) / 10,
+        reviews: agg.count,
+      });
+    }
     res.status(201).json({ success:true, review:review.toJSON() });
   } catch (err) {
     if (err.code === 11000)
